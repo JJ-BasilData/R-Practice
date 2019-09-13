@@ -1,0 +1,123 @@
+---
+title: "gapminder-wrangler.rmd"
+author: "Jeff Jones"
+date: "9/13/2019"
+output: html_document
+---
+
+library(tidyverse)
+
+gapminder <- readr::read_csv('https://raw.githubusercontent.com/OHI-Science/data-science-training/master/data/gapminder.csv') 
+
+## Quick views of data
+head(gapminder)
+tail(gapminder)
+head(gapminder, 10)
+
+## structure of data.
+str(gapminder)
+
+## More basic info on the data
+names(gapminder)
+dim(gapminder)    # ?dim dimension
+ncol(gapminder)   # ?ncol number of columns
+nrow(gapminder)   # ?nrow number of rows
+
+## statistical overview 
+
+summary(gapminder)
+install.packages('skimr')
+library(skimr) # install.packages('skimr')
+skim(gapminder)
+
+### specifying variables 
+### To specify a single variable from a data.frame, use the dollar sign $. The $ operator is a way to extract of replace parts of an object — check out the help menu for $
+
+gapminder$lifeExp # very long! hard to make sense of...
+head(gapminder$lifeExp) # can do the same tests we tried before
+str(gapminder$lifeExp) # it is a single numeric vector
+summary(gapminder$lifeExp) # same information, formatted slightly differently
+
+
+## Using dplyr ------
+* filter(): Pick variables by their values. i.e subset of rows(observations)
+* select(): pick variables by their names i.e. subset of columns (variables)
+* mutate(): create new variables with functions of existing variables i.e. add another column
+* summarise(): collapse many values down to a single summary. i.e. grouping data to summarize only needed info
+* arrange(): reorder the rows
+** All of these can be used in conjunction with group_by() which changes the scope of each function from operating on the entire dataset to operating group-by-group. 
+** these also all work the same way. function(dataframe, argument) and the results are new dataframes
+
+### Filtering
+filter(gapminder, lifeExp<29)
+filter(gapminder, country %in% c("Mexico", "Peru"))
+filter(gapminder, country == "Mexico", year == 2002)
+
+* Average live expectancy in Brazil between 1987-2007
+x <- filter(gapminder, country == "Brazil", year > 1986)  
+mean(x$lifeExp)  
+
+## Select (): subsetting columns
+
+head(select(gapminder, year, country, lifeExp), 10)
+head(select(gapminder, -continent, -lifeExp), 10)    # can use '-' to deselect columns
+
+## Using select() and filter() together
+
+gap_cambodia  <- filter(gapminder, country == "Cambodia")
+gap_cambodia2 <- select(gap_cambodia, -continent, -lifeExp) 
+
+
+# Pipe operator %>% Ctr+Shft+M
+
+gapminder %>% head()
+gapminder %>% head(10)
+
+## instead of this...
+gap_cambodia  <- filter(gapminder, country == "Cambodia")
+gap_cambodia2 <- select(gap_cambodia, -continent, -lifeExp) 
+
+## ...we can do this
+gap_cambodia  <- gapminder %>% filter(country == "Cambodia")
+gap_cambodia2 <- gap_cambodia %>% select(-continent, -lifeExp) 
+
+## ...even better, we can do this to chain the arguments together
+gap_cambodia  <- gapminder %>% 
+  filter(country == "Cambodia") %>%
+  select(-continent, -lifeExp) 
+### This can be read like a story “start with the gapminder data, and then
+### filter for Cambodia, and then
+### drop the variables continent and lifeExp.”
+  
+## Mutate() adds new variables
+* Imagine we want to know each countries annual GDP (multiply pop by gdpPercap)
+
+gapminder %>%
+  mutate(gdp = pop * gdpPercap)
+
+* Population in thousands for all asian countries in 2007 
+
+gapminder %>%
+  filter(continent == "Asia",
+         year == 2007) %>%
+  mutate(pop_thousands = pop/1000) %>%
+  select(country, year, pop_thousands) #this cleans up the dataframe but isn't necessary
+  
+## group_by() operates on groups
+* consider population on each continent in 2002
+
+gapminder %>%
+  filter(year == 2002) %>%
+  group_by(continent) %>% 
+  mutate(cont_pop = sum(pop))
+  
+### now we want to collapse the output 
+gapminder %>%
+  group_by(continent) %>%
+  summarize(cont_pop = sum(pop)) %>% 
+  ungroup()
+
+gapminder %>%
+  group_by(continent, year) %>%
+  summarize(cont_pop = sum(pop))
+
